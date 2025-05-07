@@ -57,6 +57,9 @@ class AddFIPS:
     data = files('addfips')
 
     def __init__(self, vintage=None):
+        self.state_fips_to_name = {}
+        self.county_fips_to_name = {}
+
         # Handle de-diacreticizing
         self.diacretic_pattern = '(' + ('|'.join(DIACRETICS)) + ')'
         self.delete_diacretics = lambda x: DIACRETICS[x.group()]
@@ -77,6 +80,8 @@ class AddFIPS:
                 states[row['postal'].lower()] = row['fips']
                 states[row['name'].lower()] = row['fips']
                 state_fips[row['fips']] = row['fips']
+                # Build the FIPS-to-name map
+                self.state_fips_to_name[row['fips']] = row['name']
 
             state_fips = frozenset(state_fips)
 
@@ -86,17 +91,27 @@ class AddFIPS:
         with self.data.joinpath(COUNTY_FILES[vintage]).open('rt', encoding='utf-8') as f:
             counties = {}
             for row in csv.DictReader(f):
-                if row['statefp'] not in counties:
-                    counties[row['statefp']] = {}
+                statefp = row['statefp']
+                countyfp = row['countyfp']
+                full_fips = statefp + countyfp
 
-                state = counties[row['statefp']]
+                # Save original county name for reverse lookup
+                self.county_fips_to_name[full_fips] = row['name'].lower()
 
-                # Strip diacretics, remove geography name and add both to dict
+                if statefp not in counties:
+                    counties[statefp] = {}
+
+                state = counties[statefp]
+
+                # Strip diacretics, remove suffixes like "County", etc.
                 county = self._delete_diacretics(row['name'].lower())
                 bare_county = re.sub(COUNTY_PATTERN, '', county)
-                state[county] = state[bare_county] = row['countyfp']
 
-                # Add both versions of abbreviated names to the dict.
+                # Add normalized versions
+                state[county] = countyfp
+                state[bare_county] = countyfp
+
+                # Add abbreviation variants
                 for short, full in ABBREVS.items():
                     needle, replace = None, None
 
@@ -105,10 +120,11 @@ class AddFIPS:
                     elif county.startswith(full):
                         needle, replace = full, short
 
-                    if needle is not None:
+                    if needle:
                         replaced = county.replace(needle, replace, 1)
                         bare_replaced = bare_county.replace(needle, replace, 1)
-                        state[replaced] = state[bare_replaced] = row['countyfp']
+                        state[replaced] = countyfp
+                        state[bare_replaced] = countyfp
         return counties
 
     def _delete_diacretics(self, string):
@@ -182,3 +198,29 @@ class AddFIPS:
             row.insert(0, fips)
 
         return row
+
+    def get_county_from_fips(self, fips):
+        """
+        Get the county of a FIPS code.
+        :fips str FIPS code
+        """
+        if not fips or len(fips) != 5:
+            return None, None
+
+        county_name = self.county_fips_to_name.get(fips)
+
+        if county_name:
+            return county_name.title()
+
+        return None
+    
+    def get_state_from_fips(self, fips):
+        """
+        Get the state of a FIPS code.
+        :fips str FIPS code
+        """
+        if not fips or len(fips) != 5:
+            return None
+        
+        state_fips = fips[:2]
+        return self.state_fips_to_name.get(state_fips)
