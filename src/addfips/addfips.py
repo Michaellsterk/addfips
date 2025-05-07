@@ -98,20 +98,17 @@ class AddFIPS:
                 # Save original county name for reverse lookup
                 self.county_fips_to_name[full_fips] = row['name'].lower()
 
-                if statefp not in counties:
-                    counties[statefp] = {}
+                if row['statefp'] not in counties:
+                    counties[row['statefp']] = {}
 
-                state = counties[statefp]
+                state = counties[row['statefp']]
 
-                # Strip diacretics, remove suffixes like "County", etc.
+                # Strip diacretics, remove geography name and add both to dict
                 county = self._delete_diacretics(row['name'].lower())
                 bare_county = re.sub(COUNTY_PATTERN, '', county)
+                state[county] = state[bare_county] = row['countyfp']
 
-                # Add normalized versions
-                state[county] = countyfp
-                state[bare_county] = countyfp
-
-                # Add abbreviation variants
+                # Add both versions of abbreviated names to the dict.
                 for short, full in ABBREVS.items():
                     needle, replace = None, None
 
@@ -120,11 +117,10 @@ class AddFIPS:
                     elif county.startswith(full):
                         needle, replace = full, short
 
-                    if needle:
+                    if needle is not None:
                         replaced = county.replace(needle, replace, 1)
                         bare_replaced = bare_county.replace(needle, replace, 1)
-                        state[replaced] = countyfp
-                        state[bare_replaced] = countyfp
+                        state[replaced] = state[bare_replaced] = row['countyfp']
         return counties
 
     def _delete_diacretics(self, string):
