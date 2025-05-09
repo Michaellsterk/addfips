@@ -169,7 +169,7 @@ __get_county_fips(self, county, state)__
 Returns five-digit FIPS code based on county name and state name/abbreviation/FIPS.
 
 __get_state_from_fips(self, fips)__
-Returns state name based on the five-digit FIPS code.
+Returns state name based on a five-digit or two-digit FIPS code.
 
 __get_county_from_fips(self, fips)__
 Returns county name based on the five-digit FIPS code.

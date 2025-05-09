@@ -201,7 +201,7 @@ class TestData(unittest.TestCase):
         assert county_name == "Los Angeles County"
         state_name = self.af.get_state_from_fips(fips)
         assert state_name == "California"
-
+        assert self.af.get_state_from_fips("48") == self.af.get_state_from_fips("48157")
 
 if __name__ == '__main__':
     unittest.main()

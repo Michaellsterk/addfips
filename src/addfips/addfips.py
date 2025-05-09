@@ -215,8 +215,12 @@ class AddFIPS:
         Get the state of a FIPS code.
         :fips str FIPS code
         """
-        if not fips or len(fips) != 5:
+        if not fips:
             return None
         
-        state_fips = fips[:2]
-        return self.state_fips_to_name.get(state_fips)
+        if len(fips) == 5:
+            state_fips = fips[:2]
+            return self.state_fips_to_name.get(state_fips)
+        if len(fips) == 2:
+            return self.state_fips_to_name.get(fips)
+        return None
